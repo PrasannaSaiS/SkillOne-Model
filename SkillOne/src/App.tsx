@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AdminDashboard from "./pages/AdminDashboard";
 import LearnerDashboard from "./pages/LearnerDashboard";
-
+export const API_BASE_URL = "https://PrasannaSaiS-skillone-api.hf.space";
 const queryClient = new QueryClient();
 
 const App = () => (

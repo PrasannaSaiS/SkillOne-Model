@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../services/supabaseClient";
 import CreateLearningPathModal from "../components/CreateLearningPathModal";
-
+import { API_BASE_URL } from "../config";
 interface Course {
   id: string;
   title: string;

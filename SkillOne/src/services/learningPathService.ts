@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-
+import { API_BASE_URL } from "../config";
 export async function generateLearningPath(
   profile: {
     careerGoal: string;
@@ -10,7 +10,7 @@ export async function generateLearningPath(
   learnerId: string
 ): Promise<string[]> {
   try {
-    const response = await fetch("http://localhost:8000/generate-learning-path", {
+    const response = await fetch(`${API_BASE_URL}/api/generate-learning-path`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

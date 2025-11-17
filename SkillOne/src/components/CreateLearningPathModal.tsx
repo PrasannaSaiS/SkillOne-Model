@@ -1,5 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "../services/supabaseClient";
+
+// ✅ Import the API base URL
+const API_BASE_URL = "https://PrasannaSaiS-skillone-api.hf.space";
 
 interface CreateLearningPathModalProps {
   onClose: () => void;
@@ -18,12 +21,14 @@ export default function CreateLearningPathModal({ onClose }: CreateLearningPathM
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // Fetch career goal suggestions
+  // ✅ FIXED: Use deployed API URL
   const handleCareerInput = async (value: string) => {
     setCareerGoal(value);
     if (value.length > 2) {
       try {
-        const res = await fetch(`http://localhost:8000/api/career-goals/suggestions?query=${value}`);
+        const res = await fetch(
+          `${API_BASE_URL}/api/career-goals/suggestions?query=${value}`
+        );
         const data = await res.json();
         setCareerSuggestions(data.suggestions || []);
         setShowSuggestions(true);
@@ -51,6 +56,7 @@ export default function CreateLearningPathModal({ onClose }: CreateLearningPathM
     }
   };
 
+  // ✅ FIXED: Use deployed API URL
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!careerGoal || skills.length === 0) {
@@ -60,7 +66,7 @@ export default function CreateLearningPathModal({ onClose }: CreateLearningPathM
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/api/generate-learning-path", {
+      const res = await fetch(`${API_BASE_URL}/api/generate-learning-path`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -73,18 +79,21 @@ export default function CreateLearningPathModal({ onClose }: CreateLearningPathM
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to generate path");
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Failed to generate path: ${errorText}`);
+      }
+
       const data = await res.json();
-      
       alert(`Learning path created with ${data.total_courses} courses!`);
       onClose();
     } catch (err: any) {
+      console.error("Full error:", err);
       alert("Error: " + err.message);
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-2xl max-h-[90vh] overflow-auto">
