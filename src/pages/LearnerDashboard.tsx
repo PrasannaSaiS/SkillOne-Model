@@ -1,12 +1,8 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../services/supabaseClient";
 import CreateLearningPathModal from "../components/CreateLearningPathModal";
-import {
-  fetchLearningPaths,
-  fetchCoursesByIds,
-  fetchCourseMaterials,
-  trackCourseInteraction,
-} from "../services/learningPathService";
+import { fetchCourseMaterials, trackCourseInteraction } from "../services/learningPathService";
 
 interface Course {
   id: string;
@@ -15,6 +11,7 @@ interface Course {
   difficulty_level: string;
   education_level: string;
   tags: string[];
+  prerequisite_course_ids?: string[];
 }
 
 interface LearningPath {
@@ -27,8 +24,10 @@ interface LearningPath {
 }
 
 export default function LearnerDashboard() {
-  // Persistent learner ID (using localStorage)
-  const [learnerId, setLearnerId] = useState(() => {
+  const navigate = useNavigate();
+  
+  // Simple dummy learner ID
+  const [learnerId] = useState(() => {
     const stored = localStorage.getItem("learner_id");
     if (stored) return stored;
     const newId = `learner_${Date.now()}`;
@@ -40,26 +39,35 @@ export default function LearnerDashboard() {
   const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [selectedPath, setSelectedPath] = useState<LearningPath | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [pathCourses, setPathCourses] = useState<Course[]>([]);
 
-  // Fetch learning paths and courses
   const fetchData = async () => {
     setLoading(true);
     try {
       // Fetch all courses
-      const { data: coursesData } = await supabase
+      const { data: coursesData, error: coursesError } = await supabase
         .from("courses")
-        .select(
-          "id, title, description, difficulty_level, education_level, tags"
-        );
+        .select("id, title, description, difficulty_level, education_level, tags, prerequisite_course_ids");
 
+      if (coursesError) throw coursesError;
       setCourses(coursesData || []);
 
-      // Fetch learner's learning paths
-      const paths = await fetchLearningPaths(learnerId);
-      setLearningPaths(paths as LearningPath[]);
+      // Fetch learning paths DIRECTLY from database
+      console.log("Fetching paths for learner:", learnerId);
+      
+      const { data: pathsData, error: pathsError } = await supabase
+        .from("learning_paths")
+        .select("*")
+        .eq("learner_id", learnerId)
+        .order("created_at", { ascending: false });
+
+      if (pathsError) {
+        console.error("Error fetching paths:", pathsError);
+      } else {
+        console.log("Paths found:", pathsData?.length || 0);
+        console.log("Path data:", pathsData);
+        setLearningPaths(pathsData || []);
+      }
     } catch (err) {
       console.error("Error fetching data:", err);
     } finally {
@@ -71,23 +79,16 @@ export default function LearnerDashboard() {
     fetchData();
   }, [learnerId]);
 
-  const handleSelectPath = async (path: LearningPath) => {
-    setSelectedPath(path);
-    // Fetch course details for this path
-    try {
-      const courseData = await fetchCoursesByIds(path.course_sequence);
-      setPathCourses(courseData as Course[]);
-    } catch (err) {
-      console.error("Error fetching path courses:", err);
-    }
-  };
-
   const handleTrackInteraction = async (
     courseId: string,
     type: "viewed" | "started" | "completed"
   ) => {
-    await trackCourseInteraction(learnerId, courseId, type);
-    console.log(`Tracked ${type} interaction`);
+    try {
+      await trackCourseInteraction(learnerId, courseId, type);
+      console.log(`Tracked ${type} interaction`);
+    } catch (err) {
+      console.error("Error tracking interaction:", err);
+    }
   };
 
   return (
@@ -96,54 +97,75 @@ export default function LearnerDashboard() {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900">
-              Learning Dashboard
-            </h1>
+            <h1 className="text-4xl font-bold text-gray-900">Learning Dashboard</h1>
             <p className="text-gray-600 mt-2">Learner ID: {learnerId}</p>
           </div>
           <button
             onClick={() => setModalOpen(true)}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold shadow-lg"
           >
             + Create Learning Path
           </button>
         </div>
 
+        {/* Debug Info */}
+        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4">
+          <p className="text-blue-800 text-sm">
+            Debug: Found <strong>{learningPaths.length}</strong> learning path(s) in database
+          </p>
+        </div>
+
         {/* Learning Paths Section */}
-        {learningPaths.length > 0 && (
+        {learningPaths.length > 0 ? (
           <div className="mb-12">
             <h2 className="text-2xl font-bold mb-4">My Learning Paths</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {learningPaths.map((path) => (
                 <div
                   key={path.id}
-                  onClick={() => handleSelectPath(path)}
-                  className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-600 p-6 rounded-lg cursor-pointer hover:shadow-lg transition"
+                  className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300 p-6 rounded-xl hover:shadow-2xl transition-all"
                 >
-                  <h3 className="text-lg font-bold text-blue-900">
-                    Learning Path
+                  <h3 className="text-xl font-bold text-purple-900 mb-3">
+                    Your Personalized Learning Path
                   </h3>
-                  <p className="text-sm text-gray-600 mt-2">
-                    📊 {path.course_sequence.length} courses to master
+                  <p className="text-sm text-gray-600 mb-2">
+                    <strong>{path.course_sequence?.length || 0} courses</strong> to master
                   </p>
-                  <p className="text-sm text-gray-700 mt-2 italic">
-                    "{path.reasoning}"
+                  <p className="text-sm text-gray-700 mb-3 italic line-clamp-2">
+                    &quot;{path.reasoning}&quot;
                   </p>
-                  <p className="text-xs text-gray-500 mt-3">
+                  <p className="text-xs text-gray-500 mb-4">
                     Created: {new Date(path.created_at).toLocaleDateString()}
                   </p>
+                  
+                  {/* VIEW LEARNING PATH BUTTON */}
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelectPath(path);
+                    onClick={() => {
+                      console.log("Navigating to path:", path.id);
+                      navigate(`/learning-path/${path.id}`);
                     }}
-                    className="mt-3 bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-xl text-base font-bold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
                   >
-                    View Path →
+                    View My Learning Path →
                   </button>
                 </div>
               ))}
             </div>
+          </div>
+        ) : (
+          <div className="bg-yellow-50 border-2 border-yellow-300 p-8 rounded-xl mb-8 text-center">
+            <h3 className="text-2xl font-semibold text-yellow-900 mb-3">
+              No Learning Paths Yet
+            </h3>
+            <p className="text-yellow-800 mb-4">
+              Click <strong>&quot;+ Create Learning Path&quot;</strong> above to generate your personalized learning roadmap!
+            </p>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="bg-yellow-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-yellow-700 transition"
+            >
+              Get Started →
+            </button>
           </div>
         )}
 
@@ -151,9 +173,7 @@ export default function LearnerDashboard() {
         <div>
           <h2 className="text-2xl font-bold mb-4">Discover Courses</h2>
           {loading ? (
-            <div className="text-center py-8 text-gray-600">
-              Loading courses...
-            </div>
+            <div className="text-center py-8 text-gray-600">Loading courses...</div>
           ) : courses.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {courses.map((course) => (
@@ -166,7 +186,7 @@ export default function LearnerDashboard() {
                   <p className="text-sm text-gray-600 mb-3">
                     {course.description?.substring(0, 100)}...
                   </p>
-                  <div className="flex justify-between items-center text-xs">
+                  <div className="flex justify-between items-center text-xs mb-3">
                     <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
                       {course.difficulty_level}
                     </span>
@@ -174,7 +194,7 @@ export default function LearnerDashboard() {
                       {course.education_level}
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-1 mt-3">
+                  <div className="flex flex-wrap gap-1">
                     {course.tags?.slice(0, 3).map((tag) => (
                       <span
                         key={tag}
@@ -198,7 +218,10 @@ export default function LearnerDashboard() {
         <CreateLearningPathModal
           learnerId={learnerId}
           onClose={() => setModalOpen(false)}
-          onPathCreated={fetchData}
+          onPathCreated={() => {
+            setModalOpen(false);
+            fetchData(); // Refresh paths
+          }}
         />
       )}
 
@@ -210,24 +233,11 @@ export default function LearnerDashboard() {
           onTrackInteraction={handleTrackInteraction}
         />
       )}
-
-      {selectedPath && pathCourses.length > 0 && (
-        <LearningPathVisualization
-          path={selectedPath}
-          courses={pathCourses}
-          learnerId={learnerId}
-          onClose={() => {
-            setSelectedPath(null);
-            setPathCourses([]);
-          }}
-          onTrackInteraction={handleTrackInteraction}
-        />
-      )}
     </div>
   );
 }
 
-// ============== COURSE OVERLAY COMPONENT ==============
+// Course Overlay Component
 function CourseOverlay({
   course,
   learnerId,
@@ -265,10 +275,7 @@ function CourseOverlay({
             <h2 className="text-2xl font-bold">{course.title}</h2>
             <p className="text-gray-600">{course.description}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl"
-          >
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">
             ✕
           </button>
         </div>
@@ -289,10 +296,7 @@ function CourseOverlay({
             <p className="font-semibold mb-2">Topics:</p>
             <div className="flex flex-wrap gap-2">
               {course.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
-                >
+                <span key={tag} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
                   {tag}
                 </span>
               ))}
@@ -307,10 +311,7 @@ function CourseOverlay({
             <p className="font-semibold mb-2">📁 Course Materials:</p>
             <ul className="space-y-2">
               {materials.map((m) => (
-                <li
-                  key={m.id}
-                  className="flex items-center gap-2 p-2 bg-gray-50 rounded hover:bg-gray-100"
-                >
+                <li key={m.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded hover:bg-gray-100">
                   <span>📄</span>
                   <a
                     href={m.material_url}
@@ -328,102 +329,10 @@ function CourseOverlay({
           <p className="text-gray-600 mb-4">No materials available</p>
         )}
 
-        <button
-          onClick={onClose}
-          className="w-full bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
-        >
+        <button onClick={onClose} className="w-full bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400">
           Close
         </button>
       </div>
-    </div>
-  );
-}
-
-// ============== LEARNING PATH VISUALIZATION ==============
-function LearningPathVisualization({
-  path,
-  courses,
-  learnerId,
-  onClose,
-  onTrackInteraction,
-}: {
-  path: LearningPath;
-  courses: Course[];
-  learnerId: string;
-  onClose: () => void;
-  onTrackInteraction: (courseId: string, type: any) => void;
-}) {
-  const [selectedCourseInPath, setSelectedCourseInPath] = useState<Course | null>(
-    null
-  );
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-8 max-w-4xl w-full max-h-96 overflow-y-auto">
-        <h2 className="text-2xl font-bold mb-2">Your Learning Path</h2>
-        <p className="text-gray-600 mb-4 italic">"{path.reasoning}"</p>
-
-        {/* Path Sequence Visualization */}
-        <div className="mb-6 overflow-x-auto">
-          <div className="flex gap-2 pb-4">
-            {courses.map((course, idx) => (
-              <div
-                key={course.id}
-                className="min-w-max"
-              >
-                <button
-                  onClick={() => {
-                    setSelectedCourseInPath(course);
-                    onTrackInteraction(course.id, "started");
-                  }}
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-                >
-                  <div className="text-sm font-bold">Step {idx + 1}</div>
-                  <div className="text-xs mt-1">{course.title}</div>
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6 text-center">
-          <div className="bg-blue-50 p-3 rounded">
-            <p className="text-2xl font-bold text-blue-600">
-              {courses.length}
-            </p>
-            <p className="text-sm text-gray-600">Total Courses</p>
-          </div>
-          <div className="bg-green-50 p-3 rounded">
-            <p className="text-2xl font-bold text-green-600">
-              {courses.filter((c) => c.difficulty_level === "Beginner").length}
-            </p>
-            <p className="text-sm text-gray-600">Beginner Friendly</p>
-          </div>
-          <div className="bg-purple-50 p-3 rounded">
-            <p className="text-2xl font-bold text-purple-600">
-              {[...new Set(courses.flatMap((c) => c.tags || []))].length}
-            </p>
-            <p className="text-sm text-gray-600">Topics Covered</p>
-          </div>
-        </div>
-
-        <button
-          onClick={onClose}
-          className="w-full bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
-        >
-          Close
-        </button>
-      </div>
-
-      {selectedCourseInPath && (
-        <CourseOverlay
-          course={selectedCourseInPath}
-          learnerId={learnerId}
-          onClose={() => setSelectedCourseInPath(null)}
-          onTrackInteraction={onTrackInteraction}
-        />
-      )}
     </div>
   );
 }
