@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "homepage": "https://PrasannaSaiS.github.io/SkillOne",
+    "homepage": "https://PrasannaSaiS.github.io/SkillOne-Model",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build"
   },
