@@ -1,15 +1,12 @@
-// ============================================================================
 // SkillOne - Add/Edit Course Modal (Complete Redesign)
 // Purpose: Create and manage courses with materials & prerequisites
-// Theme: Matches dark purple/indigo design system
-// ============================================================================
+
 
 import { useState, useEffect } from "react";
 import { supabase } from "../services/supabaseClient";
 
-// ============================================================================
+
 // TYPE DEFINITIONS
-// ============================================================================
 
 interface AddCourseModalProps {
   editingCourse?: any;
@@ -24,19 +21,16 @@ type Material = {
   material_name?: string;
 };
 
-// ============================================================================
+
 // ADD COURSE MODAL COMPONENT
-// ============================================================================
 
 export default function AddCourseModal({
   editingCourse,
   onClose,
   onCourseAdded,
 }: AddCourseModalProps) {
-  // ========================================================================
-  // STATE MANAGEMENT
-  // ========================================================================
 
+  // STATE MANAGEMENT
   const [title, setTitle] = useState(editingCourse?.title || "");
   const [description, setDescription] = useState(editingCourse?.description || "");
   const [difficulty, setDifficulty] = useState(editingCourse?.difficulty_level || "Beginner");
@@ -56,10 +50,8 @@ export default function AddCourseModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // ========================================================================
   // FETCH INITIAL DATA
-  // ========================================================================
-
+  
   useEffect(() => {
     const fetchCourses = async () => {
       const { data } = await supabase
@@ -93,10 +85,8 @@ export default function AddCourseModal({
     }
   }, [editingCourse?.id]);
 
-  // ========================================================================
-  // TAG MANAGEMENT
-  // ========================================================================
-
+    // TAG MANAGEMENT
+  
   const handleAddTag = () => {
     const val = tagInput.trim();
     if (val && !tags.includes(val)) {
@@ -109,10 +99,8 @@ export default function AddCourseModal({
     setTags(tags.filter((tag) => tag !== t));
   };
 
-  // ========================================================================
-  // MATERIAL MANAGEMENT
-  // ========================================================================
-
+    // MATERIAL MANAGEMENT
+  
   const handleAddLink = () => {
     const url = linkInput.trim();
     if (!url) {
@@ -175,10 +163,8 @@ export default function AddCourseModal({
     setMaterials(materials.filter((_, ix) => ix !== i));
   };
 
-  // ========================================================================
-  // PREREQUISITE MANAGEMENT
-  // ========================================================================
-
+    // PREREQUISITE MANAGEMENT
+  
   const togglePrereq = (courseId: string) => {
     if (selectedPrereqs.includes(courseId)) {
       setSelectedPrereqs(selectedPrereqs.filter((id) => id !== courseId));
@@ -187,10 +173,8 @@ export default function AddCourseModal({
     }
   };
 
-  // ========================================================================
-  // FORM SUBMISSION
-  // ========================================================================
-
+    // FORM SUBMISSION
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -263,7 +247,7 @@ export default function AddCourseModal({
 
       // Success
       alert(
-        `✨ Course ${editingCourse ? "updated" : "created"} successfully!`
+        `Course ${editingCourse ? "updated" : "created"} successfully!`
       );
       setSaving(false);
       onCourseAdded?.();
@@ -275,10 +259,8 @@ export default function AddCourseModal({
     }
   };
 
-  // ========================================================================
-  // RENDER - UI STRUCTURE
-  // ========================================================================
-
+    // RENDER - UI STRUCTURE
+  
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-purple-500/30 shadow-2xl">
@@ -286,7 +268,7 @@ export default function AddCourseModal({
         <div className="sticky top-0 flex justify-between items-start p-6 border-b border-purple-500/20 bg-slate-800/95 backdrop-blur">
           <div>
             <h2 className="text-2xl font-bold text-white">
-              {editingCourse ? "✏️ Edit Course" : "➕ Create New Course"}
+              {editingCourse ? "Edit Course" : "Create New Course"}
             </h2>
             <p className="text-gray-400 text-sm mt-1">
               {editingCourse
@@ -318,7 +300,7 @@ export default function AddCourseModal({
           {/* Course Title */}
           <div>
             <label className="block text-sm font-bold text-purple-300 mb-2">
-              📚 Course Title *
+              Course Title *
             </label>
             <input
               type="text"
@@ -333,7 +315,7 @@ export default function AddCourseModal({
           {/* Description */}
           <div>
             <label className="block text-sm font-bold text-purple-300 mb-2">
-              📝 Description *
+              Description *
             </label>
             <textarea
               value={description}
@@ -349,7 +331,7 @@ export default function AddCourseModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold text-purple-300 mb-2">
-                ⚡ Difficulty Level *
+                Difficulty Level *
               </label>
               <select
                 value={difficulty}
@@ -365,7 +347,7 @@ export default function AddCourseModal({
 
             <div>
               <label className="block text-sm font-bold text-purple-300 mb-2">
-                🎓 Education Level *
+                Education Level *
               </label>
               <select
                 value={education}
@@ -384,7 +366,7 @@ export default function AddCourseModal({
           {/* Tags */}
           <div>
             <label className="block text-sm font-bold text-purple-300 mb-2">
-              🏷️ Skills/Topics *
+              Skills/Topics *
             </label>
             <div className="flex gap-2 mb-3">
               <input
@@ -437,7 +419,7 @@ export default function AddCourseModal({
           {/* Prerequisites */}
           <div>
             <label className="block text-sm font-bold text-purple-300 mb-3">
-              📋 Prerequisite Courses (Optional)
+              Prerequisite Courses (Optional)
             </label>
             {allCourses.filter((c) => c.id !== editingCourse?.id).length === 0 ? (
               <p className="text-gray-400 text-sm italic">
@@ -468,7 +450,7 @@ export default function AddCourseModal({
           {/* Materials Section */}
           <div className="border-t border-purple-500/20 pt-6">
             <h3 className="text-lg font-bold text-white mb-4">
-              📚 Course Materials (Optional)
+              Course Materials (Optional)
             </h3>
 
             {/* Add Link */}
@@ -522,7 +504,7 @@ export default function AddCourseModal({
             {materials.length === 0 ? (
               <div className="text-center py-6 bg-slate-700/20 rounded-lg border border-dashed border-slate-600">
                 <p className="text-gray-400 text-sm">
-                  📭 No materials added yet. (Optional)
+                  No materials added yet. (Optional)
                 </p>
               </div>
             ) : (
@@ -577,10 +559,10 @@ export default function AddCourseModal({
               className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105"
             >
               {saving
-                ? "💾 Saving..."
+                ? "Saving..."
                 : editingCourse
-                ? "✏️ Update Course"
-                : "➕ Create Course"}
+                ? "Update Course"
+                : "Create Course"}
             </button>
           </div>
         </form>

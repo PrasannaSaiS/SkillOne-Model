@@ -239,7 +239,7 @@ export default function LearningPathView() {
         {/* Reasoning Card */}
         <div className="bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 rounded-xl p-6 mb-12">
           <p className="text-gray-300 italic text-lg leading-relaxed">
-            <span className="text-purple-300 font-bold">💡 Why this path?</span> {path.reasoning}
+            <span className="text-purple-300 font-bold">Why this path?</span> {path.reasoning}
           </p>
         </div>
 
@@ -307,7 +307,7 @@ export default function LearningPathView() {
                             : "bg-gray-600 text-gray-200 hover:bg-gray-700"
                         }`}
                       >
-                        {completedCourses.has(course.id) ? "✓ Done" : "⭕"}
+                        {completedCourses.has(course.id) ? "Completed" : "Mark as Complete"}
                       </button>
                     </div>
 
@@ -343,9 +343,6 @@ export default function LearningPathView() {
                       <div className="mt-4 pt-4 border-t border-purple-500/20">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-400">Relevance Match</span>
-                          <span className="text-purple-300 font-bold">
-                            {Math.round(path.relevance_scores[course.id] * 100)}%
-                          </span>
                         </div>
                         <div className="w-full bg-slate-700 rounded-full h-2 mt-2 overflow-hidden">
                           <div

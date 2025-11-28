@@ -1,9 +1,5 @@
-// ============================================================================
 // SkillOne - Create Learning Path Modal (COMPLETE FIX v2)
 // Purpose: Collect learner profile & generate personalized learning paths
-// Theme: Matches dark purple/indigo design system
-// CRITICAL FIX: Button type separation - Navigation buttons ALWAYS type="button"
-// ============================================================================
 
 import { useState, useEffect } from "react";
 import { supabase } from "../services/supabaseClient";
@@ -17,9 +13,8 @@ import {
   logCareerGoal,
 } from "../services/learningPathService";
 
-// ============================================================================
+
 // TYPE DEFINITIONS
-// ============================================================================
 
 interface CreateLearningPathModalProps {
   learnerId: string;
@@ -27,18 +22,16 @@ interface CreateLearningPathModalProps {
   onPathCreated?: () => void;
 }
 
-// ============================================================================
 // CREATE LEARNING PATH MODAL COMPONENT
-// ============================================================================
 
 export default function CreateLearningPathModal({
   learnerId,
   onClose,
   onPathCreated,
 }: CreateLearningPathModalProps) {
-  // ========================================================================
+  
   // STATE MANAGEMENT
-  // ========================================================================
+  
 
   const [careerGoal, setCareerGoal] = useState("");
   const [careerSuggestions, setCareerSuggestions] = useState<string[]>([]);
@@ -60,9 +53,9 @@ export default function CreateLearningPathModal({
   const [error, setError] = useState("");
   const [step, setStep] = useState(1); // Multi-step form
 
-  // ========================================================================
+  
   // LOAD PREVIOUS PROFILE
-  // ========================================================================
+  
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -78,9 +71,9 @@ export default function CreateLearningPathModal({
     loadProfile();
   }, [learnerId]);
 
-  // ========================================================================
+  
   // CAREER GOAL HANDLING
-  // ========================================================================
+  
 
   const handleCareerInput = async (value: string) => {
     setCareerGoal(value);
@@ -102,9 +95,9 @@ export default function CreateLearningPathModal({
     setShowCareerSuggestions(false);
   };
 
-  // ========================================================================
+  
   // SKILL HANDLING
-  // ========================================================================
+  
 
   const handleSkillInput = async (value: string) => {
     setSkillInput(value);
@@ -134,9 +127,9 @@ export default function CreateLearningPathModal({
     setSkills(skills.filter((s) => s !== skill));
   };
 
-  // ========================================================================
+  
   // INTEREST HANDLING
-  // ========================================================================
+  
 
   const handleInterestInput = async (value: string) => {
     setInterestInput(value);
@@ -166,9 +159,9 @@ export default function CreateLearningPathModal({
     setInterests(interests.filter((i) => i !== interest));
   };
 
-  // ========================================================================
+  
   // FORM SUBMISSION
-  // ========================================================================
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,9 +216,9 @@ export default function CreateLearningPathModal({
     }
   };
 
-  // ========================================================================
+  
   // RENDER - MULTI-STEP FORM
-  // ========================================================================
+  
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -316,7 +309,7 @@ export default function CreateLearningPathModal({
               {/* Education Level */}
               <div>
                 <label className="block text-sm font-bold text-purple-300 mb-2">
-                  🎓 Education Level
+                  Education Level
                 </label>
                 <select
                   value={educationLevel}
@@ -333,7 +326,7 @@ export default function CreateLearningPathModal({
               {/* Proficiency Level */}
               <div>
                 <label className="block text-sm font-bold text-purple-300 mb-2">
-                  📊 Current Proficiency Level
+                  Current Proficiency Level
                 </label>
                 <select
                   value={proficiency}
@@ -355,7 +348,7 @@ export default function CreateLearningPathModal({
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-bold text-purple-300 mb-2">
-                  🔧 Skills to Learn (At least 1 required)
+                  Skills to Learn (At least 1 required)
                 </label>
                 <div className="relative mb-3">
                   <div className="flex gap-2">
@@ -501,26 +494,26 @@ export default function CreateLearningPathModal({
               {/* Summary */}
               <div className="bg-slate-700/50 border border-purple-500/20 rounded-lg p-4">
                 <p className="text-sm text-gray-300 font-semibold mb-2">
-                  📋 Your Learning Profile Summary
+                  Your Learning Profile Summary
                 </p>
                 <ul className="text-sm text-gray-400 space-y-1">
                   <li>
-                    🎯 Career Goal:{" "}
+                    Career Goal:{" "}
                     <span className="text-purple-300">{careerGoal}</span>
                   </li>
                   <li>
-                    🎓 Education:{" "}
+                    Education:{" "}
                     <span className="text-purple-300">{educationLevel}</span>
                   </li>
                   <li>
-                    📊 Level: <span className="text-purple-300">{proficiency}</span>
+                    Level: <span className="text-purple-300">{proficiency}</span>
                   </li>
                   <li>
-                    🔧 Skills:{" "}
+                    Skills:{" "}
                     <span className="text-purple-300">{skills.length} added</span>
                   </li>
                   <li>
-                    ❤️ Interests:{" "}
+                    Interests:{" "}
                     <span className="text-purple-300">{interests.length} added</span>
                   </li>
                 </ul>
@@ -528,7 +521,7 @@ export default function CreateLearningPathModal({
             </div>
           )}
 
-          {/* Buttons Section - CRITICAL: Separate navigation from submit */}
+          {/* Buttons Section*/}
           <div className="flex gap-3 mt-8">
             {/* BACK BUTTON - Always type="button", never submits */}
             {step > 1 && (
@@ -541,7 +534,7 @@ export default function CreateLearningPathModal({
               </button>
             )}
 
-            {/* NEXT STEP BUTTON - Always type="button", never submits */}
+            {/* NEXT STEP BUTTON*/}
             {step < 3 && (
               <button
                 type="button"
@@ -568,7 +561,7 @@ export default function CreateLearningPathModal({
                 disabled={loading || skills.length === 0}
                 className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105"
               >
-                {loading ? "🔄 Generating Path..." : "🚀 Generate My Learning Path"}
+                {loading ? "Generating Path..." : "Generate My Learning Path"}
               </button>
             )}
 

@@ -141,7 +141,7 @@ export default function LearnerDashboard() {
             onClick={() => setModalOpen(true)}
             className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-6 py-2.5 rounded-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
           >
-            <span className="text-lg">✨</span>
+            <span className="text-lg">Create Learning Path</span>
             <span className="hidden xs:inline">Create Path</span>
           </button>
         </div>
@@ -181,7 +181,6 @@ export default function LearnerDashboard() {
                     <span className="bg-purple-600 text-white px-4 py-1.5 rounded-full text-sm font-bold">
                       Path #{index + 1}
                     </span>
-                    <span className="text-2xl">🎯</span>
                   </div>
 
                   {/* Path Info */}
@@ -190,7 +189,6 @@ export default function LearnerDashboard() {
                   </h3>
 
                   <div className="flex items-center gap-2 mb-4 text-gray-300">
-                    <span className="text-xl">📊</span>
                     <span className="font-semibold">
                       {path.course_sequence?.length || 0} courses
                     </span>
@@ -224,7 +222,6 @@ export default function LearnerDashboard() {
           </section>
         ) : (
           <section className="mb-16 bg-gradient-to-r from-purple-900/20 to-indigo-900/20 border-2 border-dashed border-purple-500/50 rounded-2xl p-8 text-center">
-            <div className="text-5xl mb-4">🚀</div>
             <h3 className="text-2xl font-bold text-white mb-2">No Learning Paths Yet</h3>
             <p className="text-gray-300 mb-6">
               Click the <strong>&quot;Create Path&quot;</strong> button to generate your first personalized learning roadmap!
@@ -298,7 +295,6 @@ export default function LearnerDashboard() {
                     <h3 className="text-lg font-bold text-white flex-1 group-hover:text-purple-300 transition-colors">
                       {course.title}
                     </h3>
-                    <span className="text-2xl ml-2">📚</span>
                   </div>
 
                   {/* Description */}
