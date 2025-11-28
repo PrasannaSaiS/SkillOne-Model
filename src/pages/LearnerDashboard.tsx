@@ -1,8 +1,17 @@
+
+// SkillOne - Learner Dashboard (Complete Redesign)
+// Purpose: Display personalized learning paths and course library
+// Responsive: Mobile, Tablet, Laptop, Desktop
+
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../services/supabaseClient";
 import CreateLearningPathModal from "../components/CreateLearningPathModal";
-import { fetchCourseMaterials, trackCourseInteraction } from "../services/learningPathService";
+
+
+// TYPE DEFINITIONS
+
 
 interface Course {
   id: string;
@@ -23,13 +32,21 @@ interface LearningPath {
   created_at: string;
 }
 
+
+// LEARNER DASHBOARD COMPONENT
+
+
 export default function LearnerDashboard() {
   const navigate = useNavigate();
+
   
-  // Simple dummy learner ID
+  // STATE MANAGEMENT
+  
+
   const [learnerId] = useState(() => {
     const stored = localStorage.getItem("learner_id");
     if (stored) return stored;
+
     const newId = `learner_${Date.now()}`;
     localStorage.setItem("learner_id", newId);
     return newId;
@@ -40,6 +57,12 @@ export default function LearnerDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterDifficulty, setFilterDifficulty] = useState("All");
+
+  
+  // DATA FETCHING
+  
 
   const fetchData = async () => {
     setLoading(true);
@@ -52,9 +75,7 @@ export default function LearnerDashboard() {
       if (coursesError) throw coursesError;
       setCourses(coursesData || []);
 
-      // Fetch learning paths DIRECTLY from database
-      console.log("Fetching paths for learner:", learnerId);
-      
+      // Fetch learning paths
       const { data: pathsData, error: pathsError } = await supabase
         .from("learning_paths")
         .select("*")
@@ -64,8 +85,6 @@ export default function LearnerDashboard() {
       if (pathsError) {
         console.error("Error fetching paths:", pathsError);
       } else {
-        console.log("Paths found:", pathsData?.length || 0);
-        console.log("Path data:", pathsData);
         setLearningPaths(pathsData || []);
       }
     } catch (err) {
@@ -79,260 +98,335 @@ export default function LearnerDashboard() {
     fetchData();
   }, [learnerId]);
 
-  const handleTrackInteraction = async (
-    courseId: string,
-    type: "viewed" | "started" | "completed"
-  ) => {
-    try {
-      await trackCourseInteraction(learnerId, courseId, type);
-      console.log(`Tracked ${type} interaction`);
-    } catch (err) {
-      console.error("Error tracking interaction:", err);
-    }
+  
+  // FILTER & SEARCH LOGIC
+  
+
+  const filteredCourses = courses.filter((course) => {
+    const matchesSearch =
+      course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDifficulty =
+      filterDifficulty === "All" || course.difficulty_level === filterDifficulty;
+    return matchesSearch && matchesDifficulty;
+  });
+
+  
+  // EVENT HANDLERS
+  
+
+  const handleViewPath = (pathId: string) => {
+    navigate(`/learning-path/${pathId}`);
   };
 
+  
+  // RENDER - UI STRUCTURE
+  
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900">Learning Dashboard</h1>
-            <p className="text-gray-600 mt-2">Learner ID: {learnerId}</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Top Navigation Bar */}
+      <nav className="sticky top-0 z-40 bg-slate-800/80 backdrop-blur-md border-b border-purple-500/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-lg">S</span>
+            </div>
+            <h1 className="text-2xl font-bold text-white hidden sm:block">
+              SkillOne
+            </h1>
           </div>
+
           <button
             onClick={() => setModalOpen(true)}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold shadow-lg"
+            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-6 py-2.5 rounded-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-2"
           >
-            + Create Learning Path
+            <span className="text-lg">✨</span>
+            <span className="hidden xs:inline">Create Path</span>
           </button>
         </div>
+      </nav>
 
-        {/* Debug Info */}
-        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4">
-          <p className="text-blue-800 text-sm">
-            Debug: Found <strong>{learningPaths.length}</strong> learning path(s) in database
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Section */}
+        <div className="mb-12">
+          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-3">
+            Your Learning <span className="bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">Journey</span>
+          </h1>
+          <p className="text-gray-300 text-lg">
+            Follow personalized learning roadmaps to master new skills
           </p>
         </div>
 
         {/* Learning Paths Section */}
         {learningPaths.length > 0 ? (
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-4">My Learning Paths</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {learningPaths.map((path) => (
+          <section className="mb-16">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-1 h-8 bg-gradient-to-b from-purple-500 to-indigo-600 rounded"></div>
+              <h2 className="text-3xl font-bold text-white">My Learning Paths</h2>
+              <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                {learningPaths.length}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+              {learningPaths.map((path, index) => (
                 <div
                   key={path.id}
-                  className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300 p-6 rounded-xl hover:shadow-2xl transition-all"
+                  className="group bg-gradient-to-br from-purple-900/40 to-indigo-900/40 border border-purple-500/30 hover:border-purple-500/60 rounded-2xl p-6 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20"
                 >
-                  <h3 className="text-xl font-bold text-purple-900 mb-3">
-                    Your Personalized Learning Path
+                  {/* Path Badge */}
+                  <div className="flex items-start justify-between mb-4">
+                    <span className="bg-purple-600 text-white px-4 py-1.5 rounded-full text-sm font-bold">
+                      Path #{index + 1}
+                    </span>
+                    <span className="text-2xl">🎯</span>
+                  </div>
+
+                  {/* Path Info */}
+                  <h3 className="text-2xl font-bold text-white mb-2">
+                    Your Personalized Roadmap
                   </h3>
-                  <p className="text-sm text-gray-600 mb-2">
-                    <strong>{path.course_sequence?.length || 0} courses</strong> to master
-                  </p>
-                  <p className="text-sm text-gray-700 mb-3 italic line-clamp-2">
+
+                  <div className="flex items-center gap-2 mb-4 text-gray-300">
+                    <span className="text-xl">📊</span>
+                    <span className="font-semibold">
+                      {path.course_sequence?.length || 0} courses
+                    </span>
+                  </div>
+
+                  {/* Reasoning */}
+                  <p className="text-gray-300 mb-6 italic line-clamp-2 text-sm">
                     &quot;{path.reasoning}&quot;
                   </p>
-                  <p className="text-xs text-gray-500 mb-4">
-                    Created: {new Date(path.created_at).toLocaleDateString()}
+
+                  {/* Date */}
+                  <p className="text-gray-400 text-xs mb-6">
+                    Created: {new Date(path.created_at).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </p>
-                  
-                  {/* VIEW LEARNING PATH BUTTON */}
+
+                  {/* View Button */}
                   <button
-                    onClick={() => {
-                      console.log("Navigating to path:", path.id);
-                      navigate(`/learning-path/${path.id}`);
-                    }}
-                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-xl text-base font-bold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                    onClick={() => handleViewPath(path.id)}
+                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 transform group-hover:translate-x-1 flex items-center justify-center gap-2"
                   >
-                    View My Learning Path →
+                    <span>View My Path</span>
+                    <span className="text-lg">→</span>
                   </button>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         ) : (
-          <div className="bg-yellow-50 border-2 border-yellow-300 p-8 rounded-xl mb-8 text-center">
-            <h3 className="text-2xl font-semibold text-yellow-900 mb-3">
-              No Learning Paths Yet
-            </h3>
-            <p className="text-yellow-800 mb-4">
-              Click <strong>&quot;+ Create Learning Path&quot;</strong> above to generate your personalized learning roadmap!
+          <section className="mb-16 bg-gradient-to-r from-purple-900/20 to-indigo-900/20 border-2 border-dashed border-purple-500/50 rounded-2xl p-8 text-center">
+            <div className="text-5xl mb-4">🚀</div>
+            <h3 className="text-2xl font-bold text-white mb-2">No Learning Paths Yet</h3>
+            <p className="text-gray-300 mb-6">
+              Click the <strong>&quot;Create Path&quot;</strong> button to generate your first personalized learning roadmap!
             </p>
             <button
               onClick={() => setModalOpen(true)}
-              className="bg-yellow-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-yellow-700 transition"
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-3 rounded-lg font-bold hover:shadow-lg transition-all inline-flex items-center gap-2"
             >
-              Get Started →
+              <span>Create Your First Path</span>
+              <span>✨</span>
             </button>
-          </div>
+          </section>
         )}
 
         {/* Discover Courses Section */}
-        <div>
-          <h2 className="text-2xl font-bold mb-4">Discover Courses</h2>
+        <section>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-8 bg-gradient-to-b from-purple-500 to-indigo-600 rounded"></div>
+              <h2 className="text-3xl font-bold text-white">Discover Courses</h2>
+            </div>
+            <span className="bg-purple-600/30 text-purple-200 px-4 py-2 rounded-lg font-semibold">
+              {filteredCourses.length} Available
+            </span>
+          </div>
+
+          {/* Search & Filter Bar */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-8">
+            {/* Search Input */}
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Search courses..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-800 border border-purple-500/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 transition-all"
+              />
+            </div>
+
+            {/* Difficulty Filter */}
+            <select
+              value={filterDifficulty}
+              onChange={(e) => setFilterDifficulty(e.target.value)}
+              className="bg-slate-800 border border-purple-500/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-all cursor-pointer"
+            >
+              <option value="All">All Levels</option>
+              <option value="Beginner">Beginner</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="Advanced">Advanced</option>
+            </select>
+          </div>
+
+          {/* Loading State */}
           {loading ? (
-            <div className="text-center py-8 text-gray-600">Loading courses...</div>
-          ) : courses.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {courses.map((course) => (
+            <div className="flex justify-center items-center py-12">
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-300 font-semibold">Loading courses...</p>
+              </div>
+            </div>
+          ) : filteredCourses.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCourses.map((course) => (
                 <div
                   key={course.id}
                   onClick={() => setSelectedCourse(course)}
-                  className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition"
+                  className="group bg-gradient-to-br from-slate-800/80 to-slate-800/40 border border-purple-500/20 hover:border-purple-500/60 rounded-xl p-6 cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/20 hover:-translate-y-1"
                 >
-                  <h3 className="font-bold text-lg mb-2">{course.title}</h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    {course.description?.substring(0, 100)}...
+                  {/* Header */}
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-lg font-bold text-white flex-1 group-hover:text-purple-300 transition-colors">
+                      {course.title}
+                    </h3>
+                    <span className="text-2xl ml-2">📚</span>
+                  </div>
+
+                  {/* Description */}
+                  <p className="text-gray-300 text-sm mb-4 line-clamp-2">
+                    {course.description}
                   </p>
-                  <div className="flex justify-between items-center text-xs mb-3">
-                    <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+
+                  {/* Meta Info */}
+                  <div className="flex gap-2 mb-4 flex-wrap">
+                    <span className="bg-yellow-500/20 text-yellow-300 text-xs font-bold px-2.5 py-1 rounded-full border border-yellow-500/30">
                       {course.difficulty_level}
                     </span>
-                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                    <span className="bg-blue-500/20 text-blue-300 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-500/30">
                       {course.education_level}
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    {course.tags?.slice(0, 3).map((tag) => (
+
+                  {/* Tags */}
+                  <div className="flex gap-2 flex-wrap">
+                    {course.tags?.slice(0, 2).map((tag) => (
                       <span
                         key={tag}
-                        className="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded"
+                        className="bg-purple-600/30 text-purple-200 text-xs px-2 py-1 rounded-lg border border-purple-500/30"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    {course.tags && course.tags.length > 2 && (
+                      <span className="bg-purple-600/30 text-purple-200 text-xs px-2 py-1 rounded-lg border border-purple-500/30">
+                        +{course.tags.length - 2}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-400 text-lg">No courses found matching your search</p>
+            </div>
+          )}
+        </section>
+      </main>
+
+      {/* Course Detail Modal */}
+      {selectedCourse && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedCourse(null)}
+        >
+          <div
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-purple-500/30 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="sticky top-0 flex justify-between items-start p-6 border-b border-purple-500/20 bg-slate-800/95 backdrop-blur">
+              <div>
+                <h2 className="text-2xl font-bold text-white">{selectedCourse.title}</h2>
+                <p className="text-gray-400 text-sm mt-1">Course Details</p>
+              </div>
+              <button
+                onClick={() => setSelectedCourse(null)}
+                className="text-gray-400 hover:text-white transition-colors text-2xl w-8 h-8 flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              {/* Description */}
+              <div className="mb-6">
+                <h3 className="text-lg font-bold text-purple-300 mb-2">About</h3>
+                <p className="text-gray-300 leading-relaxed">{selectedCourse.description}</p>
+              </div>
+
+              {/* Meta Info Grid */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-slate-700/50 rounded-lg p-4 border border-purple-500/20">
+                  <p className="text-gray-400 text-sm mb-1">Difficulty Level</p>
+                  <p className="text-white font-bold text-lg">{selectedCourse.difficulty_level}</p>
+                </div>
+                <div className="bg-slate-700/50 rounded-lg p-4 border border-purple-500/20">
+                  <p className="text-gray-400 text-sm mb-1">Education Level</p>
+                  <p className="text-white font-bold text-lg">{selectedCourse.education_level}</p>
+                </div>
+              </div>
+
+              {/* Tags */}
+              {selectedCourse.tags && selectedCourse.tags.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-purple-300 mb-3">Topics</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCourse.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="bg-purple-600/30 text-purple-200 px-4 py-2 rounded-lg border border-purple-500/30 font-semibold"
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-600">No courses available yet</p>
-          )}
-        </div>
-      </div>
+              )}
 
-      {/* Modals */}
+              {/* Close Button */}
+              <button
+                onClick={() => setSelectedCourse(null)}
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Learning Path Modal */}
       {modalOpen && (
         <CreateLearningPathModal
           learnerId={learnerId}
           onClose={() => setModalOpen(false)}
           onPathCreated={() => {
             setModalOpen(false);
-            fetchData(); // Refresh paths
+            fetchData();
           }}
         />
       )}
-
-      {selectedCourse && (
-        <CourseOverlay
-          course={selectedCourse}
-          learnerId={learnerId}
-          onClose={() => setSelectedCourse(null)}
-          onTrackInteraction={handleTrackInteraction}
-        />
-      )}
-    </div>
-  );
-}
-
-// Course Overlay Component
-function CourseOverlay({
-  course,
-  learnerId,
-  onClose,
-  onTrackInteraction,
-}: {
-  course: Course;
-  learnerId: string;
-  onClose: () => void;
-  onTrackInteraction: (courseId: string, type: any) => void;
-}) {
-  const [materials, setMaterials] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchMaterials = async () => {
-      try {
-        const data = await fetchCourseMaterials(course.id);
-        setMaterials(data);
-        await onTrackInteraction(course.id, "viewed");
-      } catch (err) {
-        console.error("Error fetching materials:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchMaterials();
-  }, [course.id]);
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-96 overflow-y-auto">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h2 className="text-2xl font-bold">{course.title}</h2>
-            <p className="text-gray-600">{course.description}</p>
-          </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">
-            ✕
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="bg-yellow-50 p-3 rounded">
-            <p className="text-sm text-gray-600">Difficulty</p>
-            <p className="font-semibold">{course.difficulty_level}</p>
-          </div>
-          <div className="bg-purple-50 p-3 rounded">
-            <p className="text-sm text-gray-600">Education Level</p>
-            <p className="font-semibold">{course.education_level}</p>
-          </div>
-        </div>
-
-        {course.tags && course.tags.length > 0 && (
-          <div className="mb-4">
-            <p className="font-semibold mb-2">Topics:</p>
-            <div className="flex flex-wrap gap-2">
-              {course.tags.map((tag) => (
-                <span key={tag} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {loading ? (
-          <p className="text-gray-600">Loading materials...</p>
-        ) : materials.length > 0 ? (
-          <div className="mb-4">
-            <p className="font-semibold mb-2">📁 Course Materials:</p>
-            <ul className="space-y-2">
-              {materials.map((m) => (
-                <li key={m.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded hover:bg-gray-100">
-                  <span>📄</span>
-                  <a
-                    href={m.material_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline flex-1"
-                  >
-                    {m.material_name || m.material_type}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : (
-          <p className="text-gray-600 mb-4">No materials available</p>
-        )}
-
-        <button onClick={onClose} className="w-full bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400">
-          Close
-        </button>
-      </div>
     </div>
   );
 }

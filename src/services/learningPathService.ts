@@ -7,11 +7,11 @@ const API_BASE_URL = "https://PrasannaSaiS-skillone-api.hf.space";
 export async function saveLearnerProfile(
   learnerId: string,
   profile: {
-    careerGoal: string;
-    educationLevel: string;
+    career_goal: string;
+    education_level: string;
     skills: string[];
     interests: string[];
-    proficiencyLevel: string;
+    proficiency_level: string;
   }
 ) {
   try {
@@ -20,11 +20,11 @@ export async function saveLearnerProfile(
       .upsert(
         {
           learner_id: learnerId,
-          career_goal: profile.careerGoal,
-          education_level: profile.educationLevel,
+          career_goal: profile.career_goal,
+          education_level: profile.education_level,
           desired_skills: profile.skills,
           interests: profile.interests,
-          proficiency_level: profile.proficiencyLevel,
+          proficiency_level: profile.proficiency_level,
           updated_at: new Date(),
         },
         { onConflict: "learner_id" }
@@ -191,11 +191,11 @@ export async function generateLearningPath(
   try {
     // Save learner profile first
     await saveLearnerProfile(learnerId, {
-      careerGoal: profile.careerGoal,
-      educationLevel: profile.educationLevel,
+      career_goal: profile.careerGoal,
+      education_level: profile.educationLevel,
       skills: profile.skills,
       interests: profile.interests || [],
-      proficiencyLevel: profile.proficiencyLevel || "Beginner",
+      proficiency_level: profile.proficiencyLevel || "Beginner",
     });
 
     // Log career goal for suggestions

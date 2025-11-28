@@ -18,7 +18,7 @@ const App = () => (
       <HashRouter>
         <Routes>
           {/* Admin Dashboard - Direct access for development */}
-          <Route path="/" element={<LearnerDashboard />} />
+          <Route path="/" element={<  LearnerDashboard />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/learner" element={<LearnerDashboard />} />
           <Route path="/learning-path" element={<LearningPathView />} />

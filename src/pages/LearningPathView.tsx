@@ -1,6 +1,21 @@
+// ============================================================================
+// SkillOne - Learning Path View (Redesigned)
+// Purpose: Display personalized learning path with course details
+// Responsive: Mobile, Tablet, Laptop, Desktop
+// ============================================================================
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { fetchLearningPaths, fetchCoursesByIds, fetchCourseMaterials, trackCourseInteraction } from "../services/learningPathService";
+import {
+  fetchLearningPaths,
+  fetchCoursesByIds,
+  fetchCourseMaterials,
+  trackCourseInteraction,
+} from "../services/learningPathService";
+
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
 
 interface Course {
   id: string;
@@ -9,7 +24,7 @@ interface Course {
   difficulty_level: string;
   education_level: string;
   tags: string[];
-  prerequisite_course_ids?: string[];  // ✅ ADDED - Optional field
+  prerequisite_course_ids?: string[];
 }
 
 interface LearningPath {
@@ -28,10 +43,18 @@ interface Material {
   material_name: string | null;
 }
 
+// ============================================================================
+// LEARNING PATH VIEW COMPONENT
+// ============================================================================
+
 export default function LearningPathView() {
   const { pathId } = useParams<{ pathId?: string }>();
   const navigate = useNavigate();
-  
+
+  // ========================================================================
+  // STATE MANAGEMENT
+  // ========================================================================
+
   const [learnerId] = useState(() => localStorage.getItem("learner_id") || "");
   const [path, setPath] = useState<LearningPath | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -39,65 +62,72 @@ export default function LearningPathView() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loadingMaterials, setLoadingMaterials] = useState(false);
+  const [completedCourses, setCompletedCourses] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    loadPathData();
-  }, [pathId, learnerId]);
+  // ========================================================================
+  // DATA FETCHING
+  // ========================================================================
 
   const loadPathData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch all paths for this learner
+
+      // Fetch all paths
       const paths = await fetchLearningPaths(learnerId);
-      
-      // Get the specific path (either by ID or the most recent)
+
+      // Get specific path
       let targetPath: LearningPath | null = null;
       if (pathId) {
         targetPath = paths.find((p: LearningPath) => p.id === pathId) || null;
       } else {
-        targetPath = paths[0] || null; // Most recent
+        targetPath = paths[0] || null;
       }
-      
+
       if (!targetPath) {
-        console.error("No learning path found");
         navigate("/learner");
         return;
       }
-      
+
       setPath(targetPath);
-      
-      // Fetch courses in order
+
+      // Fetch courses
       const courseData = await fetchCoursesByIds(targetPath.course_sequence);
-      
-      // ✅ FIXED: Properly filter and map courses
-      const sortedCourses: Course[] = targetPath.course_sequence
-        .map((id: string) => {
-          const course = courseData.find((c: any) => c.id === id);
-          return course ? {
+      const sortedCourses = targetPath.course_sequence.flatMap((id: string) => {
+        const course = courseData.find((c: any) => c.id === id);
+        if (!course) return [];
+        return [
+          {
             id: course.id,
             title: course.title,
             description: course.description,
             difficulty_level: course.difficulty_level,
             education_level: course.education_level,
             tags: course.tags || [],
-            prerequisite_course_ids: course.prerequisite_course_ids || []
-          } as Course : null;
-        })
-        .filter((c): c is Course => c !== null);  // ✅ Type guard that TypeScript accepts
-      
+            prerequisite_course_ids: course.prerequisite_course_ids || [],
+          },
+        ];
+      });
+
       setCourses(sortedCourses);
     } catch (err) {
       console.error("Error loading path:", err);
+      navigate("/learner");
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadPathData();
+  }, [pathId, learnerId]);
+
+  // ========================================================================
+  // EVENT HANDLERS
+  // ========================================================================
+
   const handleOpenCourse = async (course: Course) => {
     setSelectedCourse(course);
     setLoadingMaterials(true);
-    
     try {
       const mats = await fetchCourseMaterials(course.id);
       setMaterials(mats);
@@ -109,27 +139,43 @@ export default function LearningPathView() {
     }
   };
 
-  const closeModal = () => {
-    setSelectedCourse(null);
-    setMaterials([]);
+  const handleMarkComplete = (courseId: string) => {
+    const updated = new Set(completedCourses);
+    if (updated.has(courseId)) {
+      updated.delete(courseId);
+    } else {
+      updated.add(courseId);
+    }
+    setCompletedCourses(updated);
   };
+
+  const progressPercentage = (completedCourses.size / courses.length) * 100;
+
+  // ========================================================================
+  // RENDER - UI STRUCTURE
+  // ========================================================================
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-500 to-indigo-600">
-        <div className="text-white text-2xl">Loading your learning path...</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-300 font-semibold text-lg">Loading your learning path...</p>
+        </div>
       </div>
     );
   }
 
   if (!path || courses.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-500 to-indigo-600">
-        <div className="text-center text-white">
-          <h2 className="text-3xl font-bold mb-4">No Learning Path Found</h2>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-4">❌</div>
+          <h2 className="text-3xl font-bold text-white mb-4">No Path Found</h2>
+          <p className="text-gray-300 mb-8">This learning path doesn't exist.</p>
           <button
             onClick={() => navigate("/learner")}
-            className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100"
+            className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-3 rounded-lg font-bold hover:shadow-lg transition-all"
           >
             Back to Dashboard
           </button>
@@ -142,180 +188,291 @@ export default function LearningPathView() {
   const uniqueTags = [...new Set(courses.flatMap((c) => c.tags || []))];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-500 to-indigo-600 p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Back Button */}
-        <button
-          onClick={() => navigate("/learner")}
-          className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition mb-8"
-        >
-          ← Back to Dashboard
-        </button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Top Navigation */}
+      <nav className="sticky top-0 z-40 bg-slate-800/80 backdrop-blur-md border-b border-purple-500/20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <button
+            onClick={() => navigate("/learner")}
+            className="flex items-center gap-2 text-purple-300 hover:text-purple-200 font-semibold transition-colors"
+          >
+            <span>←</span>
+            <span className="hidden xs:inline">Back</span>
+          </button>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Your Learning Journey</h1>
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold">
+            ✨
+          </div>
+        </div>
+      </nav>
 
-        {/* Header */}
-        <div className="text-center text-white mb-12">
-          <h1 className="text-5xl font-bold mb-4">Your Learning Journey</h1>
-          <p className="text-xl opacity-90">Follow this personalized roadmap to achieve your goals</p>
+      {/* Main Content */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Section */}
+        <div className="mb-12">
+          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
+            Your Personalized <span className="bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">Roadmap</span>
+          </h2>
+          <p className="text-gray-300 text-lg mb-6">
+            Follow this intelligent path to achieve your learning goals
+          </p>
+
+          {/* Progress Bar */}
+          <div className="bg-slate-800/50 border border-purple-500/30 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-white font-bold">Your Progress</span>
+              <span className="text-purple-300 font-bold">{Math.round(progressPercentage)}%</span>
+            </div>
+            <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-purple-500 to-indigo-600 h-full transition-all duration-300"
+                style={{ width: `${progressPercentage}%` }}
+              ></div>
+            </div>
+            <div className="flex items-center justify-between mt-3 text-sm text-gray-400">
+              <span>{completedCourses.size} of {courses.length} completed</span>
+              <span>{beginnerCount} Beginner • {uniqueTags.length} Topics</span>
+            </div>
+          </div>
         </div>
 
-        {/* Progress Indicator */}
-        <div className="bg-white rounded-2xl shadow-xl p-4 mb-8 inline-block">
-          <span className="text-purple-600 font-semibold">
-            Step 1 of {courses.length} - Let&apos;s begin your journey!
-          </span>
+        {/* Reasoning Card */}
+        <div className="bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 rounded-xl p-6 mb-12">
+          <p className="text-gray-300 italic text-lg leading-relaxed">
+            <span className="text-purple-300 font-bold">💡 Why this path?</span> {path.reasoning}
+          </p>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-white rounded-2xl shadow-xl p-6 text-center">
-            <div className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-              {courses.length}
-            </div>
-            <div className="text-gray-600 mt-2">Total Courses</div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
+          <div className="bg-gradient-to-br from-purple-900/40 to-indigo-900/40 border border-purple-500/30 rounded-xl p-6 text-center">
+            <p className="text-gray-400 text-sm mb-2">Total Courses</p>
+            <p className="text-4xl font-bold text-purple-300">{courses.length}</p>
           </div>
-          <div className="bg-white rounded-2xl shadow-xl p-6 text-center">
-            <div className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-              {beginnerCount}
-            </div>
-            <div className="text-gray-600 mt-2">Beginner Friendly</div>
+          <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 border border-blue-500/30 rounded-xl p-6 text-center">
+            <p className="text-gray-400 text-sm mb-2">Beginner Friendly</p>
+            <p className="text-4xl font-bold text-blue-300">{beginnerCount}</p>
           </div>
-          <div className="bg-white rounded-2xl shadow-xl p-6 text-center">
-            <div className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-              {uniqueTags.length}
-            </div>
-            <div className="text-gray-600 mt-2">Topics Covered</div>
+          <div className="bg-gradient-to-br from-emerald-900/40 to-teal-900/40 border border-emerald-500/30 rounded-xl p-6 text-center">
+            <p className="text-gray-400 text-sm mb-2">Topics Covered</p>
+            <p className="text-4xl font-bold text-emerald-300">{uniqueTags.length}</p>
           </div>
         </div>
 
-        {/* Reasoning */}
-        <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6 mb-12 text-white">
-          <p className="text-lg italic">&quot;{path.reasoning}&quot;</p>
-        </div>
+        {/* Vertical Course Path */}
+        <section>
+          <h3 className="text-2xl font-bold text-white mb-8 flex items-center gap-3">
+            <div className="w-1 h-8 bg-gradient-to-b from-purple-500 to-indigo-600 rounded"></div>
+            Course Sequence
+          </h3>
 
-        {/* Vertical Roadmap */}
-        <div className="relative pl-20">
-          {/* Connecting Line */}
-          <div className="absolute left-8 top-12 bottom-12 w-1 bg-gradient-to-b from-purple-400 to-indigo-400 rounded-full"></div>
+          <div className="relative">
+            {/* Vertical Line */}
+            <div className="absolute left-4 sm:left-6 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-500 via-indigo-500 to-purple-500 rounded-full"></div>
 
-          {/* Course Cards */}
-          {courses.map((course, index) => (
-            <div key={course.id} className="relative mb-8">
-              {/* Number Circle */}
-              <div className="absolute -left-12 top-6 w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-xl z-10">
-                {index + 1}
-              </div>
+            {/* Course Cards */}
+            <div className="space-y-6">
+              {courses.map((course, index) => (
+                <div key={course.id} className="relative pl-16 sm:pl-20">
+                  {/* Number Circle */}
+                  <div className="absolute -left-3 top-0 w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full flex items-center justify-center border-4 border-slate-900 shadow-lg">
+                    <span className="text-white font-bold text-2xl">{index + 1}</span>
+                  </div>
 
-              {/* Course Card */}
-              <div
-                onClick={() => handleOpenCourse(course)}
-                className="bg-white rounded-2xl p-6 shadow-xl hover:shadow-2xl hover:translate-x-2 transition-all cursor-pointer"
-              >
-                <h3 className="text-2xl font-bold text-gray-900 mb-3">{course.title}</h3>
-                <p className="text-gray-600 mb-4">{course.description}</p>
-                
-                <div className="flex gap-3 mb-4">
-                  <span className="bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-900 px-4 py-2 rounded-full text-sm font-semibold">
-                    {course.difficulty_level}
-                  </span>
-                  <span className="bg-gradient-to-r from-purple-100 to-purple-200 text-purple-900 px-4 py-2 rounded-full text-sm font-semibold">
-                    {course.education_level}
-                  </span>
+                  {/* Course Card */}
+                  <div
+                    onClick={() => handleOpenCourse(course)}
+                    className="group bg-gradient-to-br from-slate-800/80 to-slate-800/40 border border-purple-500/30 hover:border-purple-500/60 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/20 hover:-translate-y-1"
+                  >
+                    {/* Header */}
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <h4 className="text-xl font-bold text-white group-hover:text-purple-300 transition-colors mb-2">
+                          {course.title}
+                        </h4>
+                        <p className="text-gray-300 text-sm line-clamp-2">
+                          {course.description}
+                        </p>
+                      </div>
+
+                      {/* Completion Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkComplete(course.id);
+                        }}
+                        className={`ml-4 px-4 py-2 rounded-lg font-bold transition-all transform hover:scale-110 ${
+                          completedCourses.has(course.id)
+                            ? "bg-green-600 text-white"
+                            : "bg-gray-600 text-gray-200 hover:bg-gray-700"
+                        }`}
+                      >
+                        {completedCourses.has(course.id) ? "✓ Done" : "⭕"}
+                      </button>
+                    </div>
+
+                    {/* Meta Info */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className="bg-yellow-500/20 text-yellow-300 text-xs font-bold px-3 py-1 rounded-full border border-yellow-500/30">
+                        {course.difficulty_level}
+                      </span>
+                      <span className="bg-blue-500/20 text-blue-300 text-xs font-bold px-3 py-1 rounded-full border border-blue-500/30">
+                        {course.education_level}
+                      </span>
+                    </div>
+
+                    {/* Tags */}
+                    <div className="flex flex-wrap gap-2">
+                      {course.tags?.slice(0, 3).map((tag) => (
+                        <span
+                          key={tag}
+                          className="bg-purple-600/30 text-purple-200 text-xs px-2.5 py-1 rounded-lg border border-purple-500/30"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                      {course.tags && course.tags.length > 3 && (
+                        <span className="bg-purple-600/30 text-purple-200 text-xs px-2.5 py-1 rounded-lg border border-purple-500/30">
+                          +{course.tags.length - 3}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Relevance Score */}
+                    {path.relevance_scores[course.id] && (
+                      <div className="mt-4 pt-4 border-t border-purple-500/20">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-400">Relevance Match</span>
+                          <span className="text-purple-300 font-bold">
+                            {Math.round(path.relevance_scores[course.id] * 100)}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-700 rounded-full h-2 mt-2 overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-purple-500 to-indigo-600 h-full"
+                            style={{
+                              width: `${path.relevance_scores[course.id] * 100}%`,
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* View Details Button */}
+                    <button
+                      onClick={() => handleOpenCourse(course)}
+                      className="mt-4 w-full text-purple-300 hover:text-purple-200 font-semibold transition-colors flex items-center justify-center gap-2 group-hover:gap-3"
+                    >
+                      <span>View Details</span>
+                      <span>→</span>
+                    </button>
+                  </div>
                 </div>
-
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {course.tags?.map((tag) => (
-                    <span key={tag} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                <button className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition">
-                  View Details →
-                </button>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        </section>
+      </main>
 
       {/* Course Detail Modal */}
       {selectedCourse && (
         <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto"
-          onClick={closeModal}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedCourse(null)}
         >
           <div
-            className="bg-white rounded-2xl p-10 max-w-3xl w-full max-h-[90vh] overflow-y-auto relative"
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-purple-500/30 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close Button */}
-            <button
-              onClick={closeModal}
-              className="absolute top-6 right-6 w-12 h-12 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-2xl text-gray-600 transition hover:rotate-90"
-            >
-              ×
-            </button>
-
-            {/* Title */}
-            <h2 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent mb-4">
-              {selectedCourse.title}
-            </h2>
-
-            {/* Description */}
-            <p className="text-gray-700 text-lg leading-relaxed mb-6">
-              {selectedCourse.description}
-            </p>
-
-            {/* Meta Info */}
-            <div className="flex gap-3 mb-6">
-              <span className="bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-900 px-4 py-2 rounded-full font-semibold">
-                {selectedCourse.difficulty_level}
-              </span>
-              <span className="bg-gradient-to-r from-purple-100 to-purple-200 text-purple-900 px-4 py-2 rounded-full font-semibold">
-                {selectedCourse.education_level}
-              </span>
-            </div>
-
-            {/* Tags */}
-            <div className="flex flex-wrap gap-2 mb-8">
-              {selectedCourse.tags?.map((tag) => (
-                <span key={tag} className="bg-gray-100 text-gray-700 px-3 py-2 rounded-full">
-                  {tag}
-                </span>
-              ))}
-            </div>
-
-            {/* Materials Section */}
-            {loadingMaterials ? (
-              <div className="bg-gray-50 rounded-xl p-6">
-                <p className="text-gray-600">Loading materials...</p>
+            {/* Modal Header */}
+            <div className="sticky top-0 flex justify-between items-start p-6 border-b border-purple-500/20 bg-slate-800/95 backdrop-blur">
+              <div>
+                <h2 className="text-2xl font-bold text-white">{selectedCourse.title}</h2>
+                <p className="text-gray-400 text-sm mt-1">Course Details</p>
               </div>
-            ) : materials.length > 0 ? (
-              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6">
-                <h3 className="text-xl font-bold mb-4 text-gray-900">📁 Course Materials</h3>
-                <div className="space-y-3">
-                  {materials.map((material) => (
-                    <a
-                      key={material.id}
-                      href={material.material_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-4 bg-white p-4 rounded-lg hover:shadow-lg hover:translate-x-1 transition"
-                    >
-                      <span className="text-2xl">📄</span>
-                      <span className="text-purple-600 font-semibold flex-1 hover:underline">
-                        {material.material_name || material.material_type}
-                      </span>
-                    </a>
-                  ))}
+              <button
+                onClick={() => setSelectedCourse(null)}
+                className="text-gray-400 hover:text-white transition-colors text-2xl w-8 h-8 flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              {/* Description */}
+              <div className="mb-6">
+                <h3 className="text-lg font-bold text-purple-300 mb-2">About</h3>
+                <p className="text-gray-300 leading-relaxed">{selectedCourse.description}</p>
+              </div>
+
+              {/* Meta Grid */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-slate-700/50 rounded-lg p-4 border border-purple-500/20">
+                  <p className="text-gray-400 text-sm mb-1">Difficulty</p>
+                  <p className="text-white font-bold">{selectedCourse.difficulty_level}</p>
+                </div>
+                <div className="bg-slate-700/50 rounded-lg p-4 border border-purple-500/20">
+                  <p className="text-gray-400 text-sm mb-1">Education Level</p>
+                  <p className="text-white font-bold">{selectedCourse.education_level}</p>
                 </div>
               </div>
-            ) : (
-              <div className="bg-gray-50 rounded-xl p-6">
-                <p className="text-gray-600">No materials available for this course</p>
+
+              {/* Tags */}
+              {selectedCourse.tags && selectedCourse.tags.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-purple-300 mb-3">Topics Covered</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCourse.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="bg-purple-600/30 text-purple-200 px-4 py-2 rounded-lg border border-purple-500/30 font-semibold"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Materials Section */}
+              <div className="mb-6">
+                <h3 className="text-lg font-bold text-purple-300 mb-3">📁 Course Materials</h3>
+                {loadingMaterials ? (
+                  <div className="text-center py-6">
+                    <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                    <p className="text-gray-300">Loading materials...</p>
+                  </div>
+                ) : materials.length > 0 ? (
+                  <div className="space-y-2">
+                    {materials.map((material) => (
+                      <a
+                        key={material.id}
+                        href={material.material_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block bg-slate-700/50 hover:bg-slate-700 border border-purple-500/20 hover:border-purple-500/50 rounded-lg p-4 transition-all"
+                      >
+                        <p className="text-purple-300 font-semibold flex items-center gap-2">
+                          <span>📄</span>
+                          {material.material_name || material.material_type}
+                        </p>
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-400 italic">No materials available for this course</p>
+                )}
               </div>
-            )}
+
+              {/* Close Button */}
+              <button
+                onClick={() => setSelectedCourse(null)}
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-all"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
