@@ -1,0 +1,12 @@
+name: Keep HF Space Alive
+
+on:
+  schedule:
+    - cron: '*/20 * * * *' # Runs every 20 minutes
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake up Space
+        run: curl -s https://prasannasais-skillone-api.hf.space/health
