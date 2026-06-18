@@ -3,6 +3,7 @@ name: Keep HF Space Alive
 on:
   schedule:
     - cron: '*/20 * * * *' # Runs every 20 minutes
+  workflow_dispatch:
 
 jobs:
   ping:
